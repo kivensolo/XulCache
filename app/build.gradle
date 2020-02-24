@@ -1,0 +1,111 @@
+apply plugin: 'com.android.library'
+apply plugin: 'com.novoda.bintray-release'
+
+//输出jar/aar包的配置
+//[baseName]-[appendix]-[version]-[classifier].[extension]
+def jarVersion = "1.0.0"
+def jarFileBaseName = "XulCahce"
+def jarType = "debug"
+
+publish {
+    userOrg = 'kivensolo'
+    groupId = 'com.github.xul'
+    artifactId = 'cache'
+    publishVersion = jarVersion
+    desc = 'A cache model of android project.'
+}
+
+
+android {
+    compileSdkVersion 27
+    defaultConfig {
+        minSdkVersion 18
+        targetSdkVersion 26
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+
+    lintOptions {
+        abortOnError false
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+}
+
+/**
+ * 生成jar包库
+ **/
+task makeJar(type: Jar){
+    baseName = jarFileBaseName
+    appendix = "lib"
+    version = jarVersion
+    classifier = jarType
+    extension = "jar"
+    from('build/intermediates/classes/debug')
+    exclude('**/R.class')
+    //去掉R$开头的文件
+    exclude('**/R\$*.class')
+}
+
+task clearJar(type: Delete) {
+    // 删除libs目录数据
+    //delete 'build/libs/'
+    // 有选择性的删除
+    FileTree tree = fileTree("build/libs/")
+    tree.visit {
+        element ->
+            if (element.getName().endsWith(".jar") &&
+                    !element.getName().contains("javadoc") &&
+                    !element.getName().contains("sources")) {
+                println "$element.file.name" + " " + element.getName()
+                delete element.file
+            }
+    }
+}
+
+task sourcesJar(type: Jar) {
+    baseName = jarFileBaseName
+//    appendix = 'Cahce'
+    version = jarVersion
+    classifier = 'sources'
+    from android.sourceSets.main.java.srcDirs
+}
+
+task javadoc(type: Javadoc) {
+    version = jarVersion
+    source = android.sourceSets.main.java.srcDirs
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    baseName = jarFileBaseName
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+def jarGroup = "jars"
+makeJar.setGroup(jarGroup)
+clearJar.setGroup(jarGroup)
+sourcesJar.setGroup(jarGroup)
+javadocJar.setGroup(jarGroup)
+makeJar.dependsOn(clearJar, build)
+
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+}
+
+
+
+
+
